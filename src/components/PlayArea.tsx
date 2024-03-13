@@ -6,16 +6,17 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  DragEndEvent,
+  DragOverEvent,
 } from "@dnd-kit/core";
 
-import {
-  arrayMove,
-  SortableContext,
-  //   horizontalListSortingStrategy,
-  rectSortingStrategy,
-} from "@dnd-kit/sortable";
+import { arrayMove } from "@dnd-kit/sortable";
 
 import Card from "./Card";
+import AnswerSlot from "./AnswerSlot";
+import PlayerHand from "./PlayerHand";
+
+import { ICard } from "@/types/game";
 
 function PlayArea() {
   const testHand = [
@@ -63,12 +64,9 @@ function PlayArea() {
   };
 
   const [hand, setHand] = useState(testHand);
+  const [answer, setAnswer] = useState<ICard>({ type: "", text: "", id: 0 });
 
   const sensors = useSensors(useSensor(PointerSensor));
-
-  // const draggableMarkup = (
-  //     <Draggable id="draggable">Drag Me</Draggable>
-  // )
 
   return (
     <DndContext
@@ -83,43 +81,53 @@ function PlayArea() {
           type={testQuestion.type}
           text={testQuestion.text}
         />
-        <SortableContext items={[]} strategy={rectSortingStrategy}>
-          <div className="rounded flex justify-center items-center bg-gradient-to-t from-slate-500 text-slate-50 text-base w-52 h-72 shadow-lg">
-            Answer Card
-          </div>
-        </SortableContext>
-        <SortableContext items={hand} strategy={rectSortingStrategy}>
-          <div className="flex flex-row gap-x-2">
-            {hand.map((card) => (
-              <Card
-                key={card.id}
-                id={card.id}
-                type={card.type}
-                text={card.text}
-              />
-            ))}
-          </div>
-        </SortableContext>
+        <AnswerSlot answer={answer} />
+        <PlayerHand hand={hand} />
       </div>
     </DndContext>
   );
 
-  function handleDragOver(event) {
-    // handle onDragOver
+  function handleDragOver(event: DragOverEvent) {
+    const { active, over } = event;
+    if (!over) return;
+
+    const initialContainer = active.data.current?.sortable?.containerId;
+    const targetContainer = over.data.current?.sortable?.containerId;
+
+    if (!initialContainer) return;
+
+    // TODO - Handle remaining Drag Over logic
   }
 
-  function handleDragEnd(event) {
+  function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
 
-    console.log(active);
-    console.log(over);
-    if (active.id !== over.id) {
-      setHand((hand) => {
-        const oldIndex = hand.findIndex((card) => card.id === active.id);
-        const newIndex = hand.findIndex((card) => card.id === over.id);
+    if (!over || !active.data.current || !over.data.current) return;
 
-        return arrayMove(hand, oldIndex, newIndex);
+    if (active.id === event.over.id) return;
+
+    if (
+      active.data.current.sortable.containerId !==
+      over.data.current.sortable.containerId
+    )
+      return;
+
+    const containerName = active.data.current.sortable.containerId;
+    const oldHandIndex =
+      containerName === "HAND"
+        ? hand.findIndex((card) => card.id === active.id)
+        : -1;
+    const newIndex =
+      containerName === "HAND"
+        ? hand.findIndex((card) => card.id === over.id)
+        : 0;
+
+    if (containerName === "HAND") {
+      setHand((hand) => {
+        return arrayMove(hand, oldHandIndex, newIndex);
       });
+    } else {
+      // TODO - handle answer logic
     }
   }
 }
